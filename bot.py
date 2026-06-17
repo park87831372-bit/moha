@@ -27,10 +27,12 @@ def home():
 def run():
     # 렌더가 자동으로 지정해 주는 포트(PORT)를 가져옵니다. 없으면 기본 8080 사용
     port = int(os.environ.get("PORT", 8080))
-    app.run(host='0.0.0.0', port=port)
+    # Werkzeug 웹서버의 자체 스레드로 인한 중복 실행 및 충돌 방지 설정을 추가했습니다.
+    app.run(host='0.0.0.0', port=port, debug=False, use_reloader=False)
 
 def keep_alive():
-    t = Thread(target=run)
+    # daemon=True를 넣어 메인 프로그램(디스코드 봇)이 켜질 때 웹서버가 방해하지 않고 독립된 백그라운드에서 돌게 합니다.
+    t = Thread(target=run, daemon=True)
     t.start()
 # ----------------------------------------
 
@@ -57,9 +59,10 @@ async def load_cogs():
 
 async def main():
     """봇 시작"""
-    # 봇이 로그인하기 직전에 웹서버를 백그라운드에서 실행합니다.
+    # 1. 렌더가 웹서비스 점검(Health Check)을 들어올 때 바로 응답할 수 있도록 백그라운드 서버를 가장 먼저 깨웁니다.
     keep_alive() 
     
+    # 2. 비동기 루프 안에서 안전하게 데이터베이스와 디스코드 봇을 연결합니다.
     async with bot:
         await db.connect()
         await load_cogs()
