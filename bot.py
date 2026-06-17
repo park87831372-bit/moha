@@ -25,8 +25,9 @@ def home():
     return "Bot is alive!"
 
 def run_flask():
+    # 렌더가 자동으로 지정해 주는 포트(PORT)를 가져옵니다. 없으면 기본 8080 사용
     port = int(os.environ.get("PORT", 8080))
-    # 외부에서 접속 가능하도록 대기하며 충돌을 방지합니다.
+    # 웹서버가 충돌 없이 안정적으로 대기하도록 설정을 고정합니다.
     app.run(host='0.0.0.0', port=port, debug=False, use_reloader=False)
 
 # ----------------------------------------
@@ -55,18 +56,18 @@ async def load_cogs():
 
 async def main():
     """봇 시작"""
-    # 데이터베이스 연결 및 Cogs 로드를 봇 로그인 전에 완벽히 끝냅니다.
-    await db.connect()
-    await load_cogs()
-    
-    # 디스코드 봇 로그인 시작
-    await bot.start(os.getenv('DISCORD_TOKEN'))
-
-if __name__ == '__main__':
-    # 1. 파이썬이 실행되자마자 Flask 웹 서버를 별도의 독립된 실(Thread)에서 먼저 가동합니다.
-    # 이렇게 하면 렌더가 접속을 시도할 때 즉시 "Bot is alive!"를 응답해 줍니다.
+    # 1. 렌더가 접속 체크를 하기 전에 Flask 웹서버를 완전히 독립된 스레드로 먼저 실행합니다.
     flask_thread = threading.Thread(target=run_flask, daemon=True)
     flask_thread.start()
-    
-    # 2. 웹 서버와 상관없이 메인 흐름은 디스코드 봇을 작동시키는 데 전념합니다.
+    print("🌐 백그라운드 웹서버가 가동되었습니다 (Port: 8080)")
+
+    # 2. 웹서버와 상관없이 디스코드 봇과 DB를 비동기로 안전하게 켭니다.
+    async with bot:
+        print("🗄️ 데이터베이스 연결을 시도합니다...")
+        await db.connect()
+        await load_cogs()
+        print("🚀 디스코드 봇 로그인을 시도합니다...")
+        await bot.start(os.getenv('DISCORD_TOKEN'))
+
+if __name__ == '__main__':
     asyncio.run(main())
