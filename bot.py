@@ -5,6 +5,10 @@ from dotenv import load_dotenv
 from database import db
 import asyncio
 
+# --- 렌더(Render)용 웹서버 라이브러리 추가 ---
+from flask import Flask
+from threading import Thread
+
 load_dotenv()
 
 intents = discord.Intents.default()
@@ -12,6 +16,23 @@ intents.message_content = True
 intents.members = True
 
 bot = commands.Bot(command_prefix='/', intents=intents)
+
+# --- 렌더(Render)용 가짜 웹서버 설정 ---
+app = Flask('')
+
+@app.route('/')
+def home():
+    return "Bot is alive!"
+
+def run():
+    # 렌더가 자동으로 지정해 주는 포트(PORT)를 가져옵니다. 없으면 기본 8080 사용
+    port = int(os.environ.get("PORT", 8080))
+    app.run(host='0.0.0.0', port=port)
+
+def keep_alive():
+    t = Thread(target=run)
+    t.start()
+# ----------------------------------------
 
 @bot.event
 async def on_ready():
@@ -36,6 +57,9 @@ async def load_cogs():
 
 async def main():
     """봇 시작"""
+    # 봇이 로그인하기 직전에 웹서버를 백그라운드에서 실행합니다.
+    keep_alive() 
+    
     async with bot:
         await db.connect()
         await load_cogs()
